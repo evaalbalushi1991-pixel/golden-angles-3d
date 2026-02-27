@@ -18,7 +18,6 @@
       -webkit-background-clip: text; -webkit-text-fill-color: transparent;
       background-clip: text;
       letter-spacing: 3px; font-weight: 800;
-      text-shadow: none;
       filter: drop-shadow(0 0 20px rgba(255,215,0,0.5));
     }
     #overlay p {
@@ -43,8 +42,7 @@
 {
   "imports": {
     "three": "./three.module.js",
-    "three/addons/controls/OrbitControls.js": "./OrbitControls.js",
-    "three/addons/environments/RoomEnvironment.js": "./RoomEnvironment.js"
+    "three/addons/controls/OrbitControls.js": "./OrbitControls.js"
   }
 }
 </script>
@@ -53,160 +51,151 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-// Scene
-const scene = new THREE.Scene();
-scene.fog = new THREE.FogExp2(0x0a0a0f, 0.035);
-
-const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 100);
-camera.position.set(0, 0, 5);
-
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(devicePixelRatio);
+// Renderer
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
-renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.2;
+renderer.setClearColor(0x0a0a0f, 1);
+renderer.shadowMap.enabled = false;
 document.body.appendChild(renderer.domElement);
+
+// Scene + Camera
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+camera.position.set(0, 0, 6);
 
 // Controls
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
-controls.dampingFactor = 0.05;
+controls.dampingFactor = 0.06;
 controls.autoRotate = true;
-controls.autoRotateSpeed = 1.5;
+controls.autoRotateSpeed = 1.8;
+controls.enablePan = false;
+controls.minDistance = 3;
+controls.maxDistance = 12;
 
-// Lights
-const ambientLight = new THREE.AmbientLight(0xFFDD88, 3);
-scene.add(ambientLight);
+// ── LIGHTS ──────────────────────────────────────
+const ambient = new THREE.AmbientLight(0xffeedd, 1.5);
+scene.add(ambient);
 
-const goldLight1 = new THREE.PointLight(0xFFD700, 200, 30);
-goldLight1.position.set(4, 4, 4);
-scene.add(goldLight1);
+const sun = new THREE.DirectionalLight(0xffffff, 3);
+sun.position.set(5, 8, 6);
+scene.add(sun);
 
-const goldLight2 = new THREE.PointLight(0xFF8C00, 150, 30);
-goldLight2.position.set(-4, -2, 3);
-scene.add(goldLight2);
+const goldFill = new THREE.PointLight(0xFFD700, 8, 25);
+goldFill.position.set(-4, 2, 4);
+scene.add(goldFill);
 
-const blueLight = new THREE.PointLight(0x88AAFF, 80, 20);
-blueLight.position.set(0, -4, -3);
-scene.add(blueLight);
+const rimLight = new THREE.PointLight(0xFF8800, 5, 20);
+rimLight.position.set(0, -5, -4);
+scene.add(rimLight);
 
-const topLight = new THREE.DirectionalLight(0xFFFFFF, 2);
-topLight.position.set(0, 5, 5);
-scene.add(topLight);
-
-// === Main Golden Sphere (Icosahedron) ===
-const mainGeo = new THREE.IcosahedronGeometry(1.4, 4);
-const mainMat = new THREE.MeshStandardMaterial({
+// ── MAIN SPHERE ─────────────────────────────────
+const sphereGeo = new THREE.IcosahedronGeometry(1.5, 3);
+const sphereMat = new THREE.MeshPhongMaterial({
   color: 0xFFD700,
-  metalness: 1.0,
-  roughness: 0.15,
-  envMapIntensity: 1.5,
+  emissive: 0x221100,
+  specular: 0xFFFFAA,
+  shininess: 120,
 });
-const mainMesh = new THREE.Mesh(mainGeo, mainMat);
-scene.add(mainMesh);
+const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+scene.add(sphere);
 
-// === Wireframe Overlay ===
+// ── WIREFRAME ───────────────────────────────────
 const wireMat = new THREE.MeshBasicMaterial({
   color: 0xFFAA00,
   wireframe: true,
   transparent: true,
-  opacity: 0.12,
+  opacity: 0.15,
 });
-const wireMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1.42, 2), wireMat);
-scene.add(wireMesh);
+const wire = new THREE.Mesh(new THREE.IcosahedronGeometry(1.55, 2), wireMat);
+scene.add(wire);
 
-// === Outer Ring ===
-const ringGeo = new THREE.TorusGeometry(2.2, 0.03, 16, 120);
-const ringMat = new THREE.MeshStandardMaterial({
-  color: 0xFFD700, metalness: 1, roughness: 0.1,
-  emissive: 0xFFAA00, emissiveIntensity: 0.3,
-});
-const ring1 = new THREE.Mesh(ringGeo, ringMat);
-ring1.rotation.x = Math.PI / 2;
-scene.add(ring1);
-
-const ring2 = new THREE.Mesh(ringGeo, ringMat.clone());
-ring2.rotation.x = Math.PI / 3;
-ring2.rotation.y = Math.PI / 4;
-scene.add(ring2);
-
-const ring3 = new THREE.Mesh(ringGeo, ringMat.clone());
-ring3.rotation.y = Math.PI / 2;
-scene.add(ring3);
-
-// === Orbiting Satellites ===
-const satGroup = new THREE.Group();
-scene.add(satGroup);
-
-const satPositions = [
-  [2.5, 0, 0], [-2.5, 0, 0],
-  [0, 2.5, 0], [0, -2.5, 0],
-  [0, 0, 2.5], [0, 0, -2.5],
-];
-
-satPositions.forEach((pos, i) => {
-  const geo = new THREE.OctahedronGeometry(0.18 + (i % 3) * 0.05);
-  const mat = new THREE.MeshStandardMaterial({
-    color: i % 2 === 0 ? 0xFFD700 : 0xFFA500,
-    metalness: 1, roughness: 0.1,
-    emissive: 0xFF8800, emissiveIntensity: 0.2,
+// ── RINGS ────────────────────────────────────────
+function makeRing(rx, ry, rz) {
+  const geo = new THREE.TorusGeometry(2.4, 0.025, 12, 100);
+  const mat = new THREE.MeshPhongMaterial({
+    color: 0xFFD700,
+    emissive: 0x331100,
+    specular: 0xFFFFCC,
+    shininess: 80,
   });
-  const sat = new THREE.Mesh(geo, mat);
-  sat.position.set(...pos);
-  satGroup.add(sat);
-});
-
-// === Particle Stars ===
-const starCount = 400;
-const starGeo = new THREE.BufferGeometry();
-const starPos = new Float32Array(starCount * 3);
-for (let i = 0; i < starCount * 3; i++) {
-  starPos[i] = (Math.random() - 0.5) * 40;
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.set(rx, ry, rz);
+  scene.add(mesh);
+  return mesh;
 }
-starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-const starMat = new THREE.PointsMaterial({
-  color: 0xFFD700, size: 0.05, transparent: true, opacity: 0.6,
-});
+const ring1 = makeRing(Math.PI / 2, 0, 0);
+const ring2 = makeRing(Math.PI / 3, Math.PI / 4, 0);
+const ring3 = makeRing(0, Math.PI / 2, 0.3);
+
+// ── ORBITING GEMS ────────────────────────────────
+const gemGroup = new THREE.Group();
+scene.add(gemGroup);
+
+const gemColors = [0xFFD700, 0xFFA500, 0xFF6600, 0xFFEE00];
+for (let i = 0; i < 8; i++) {
+  const angle = (i / 8) * Math.PI * 2;
+  const r = 2.8;
+  const geo = new THREE.OctahedronGeometry(0.12 + (i % 3) * 0.04);
+  const mat = new THREE.MeshPhongMaterial({
+    color: gemColors[i % gemColors.length],
+    emissive: 0x110500,
+    specular: 0xFFFFFF,
+    shininess: 150,
+  });
+  const gem = new THREE.Mesh(geo, mat);
+  gem.position.set(Math.cos(angle) * r, Math.sin(angle * 0.5) * 0.8, Math.sin(angle) * r);
+  gemGroup.add(gem);
+}
+
+// ── STARS ────────────────────────────────────────
+const starCount = 500;
+const starPositions = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i++) {
+  starPositions[i] = (Math.random() - 0.5) * 60;
+}
+const starGeo = new THREE.BufferGeometry();
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+const starMat = new THREE.PointsMaterial({ color: 0xFFDD88, size: 0.07, transparent: true, opacity: 0.5 });
 scene.add(new THREE.Points(starGeo, starMat));
 
-// === Environment Map (simple gradient) ===
-const pmremGenerator = new THREE.PMREMGenerator(renderer);
-scene.environment = pmremGenerator.fromScene(
-  new THREE.RoomEnvironment(), 0.04
-).texture;
+// ── GLOW CORE ────────────────────────────────────
+const glowGeo = new THREE.SphereGeometry(0.9, 16, 16);
+const glowMat = new THREE.MeshBasicMaterial({ color: 0xFFAA00, transparent: true, opacity: 0.08 });
+scene.add(new THREE.Mesh(glowGeo, glowMat));
 
-// Resize
+// ── RESIZE ───────────────────────────────────────
 window.addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
 });
 
-// Animate
+// ── ANIMATE ──────────────────────────────────────
 let t = 0;
 function animate() {
   requestAnimationFrame(animate);
-  t += 0.01;
+  t += 0.012;
 
-  // Pulsating scale
-  const pulse = 1 + 0.03 * Math.sin(t * 2);
-  mainMesh.scale.setScalar(pulse);
-  wireMesh.scale.setScalar(pulse * 1.01);
+  // Breathe
+  const pulse = 1 + 0.04 * Math.sin(t * 1.8);
+  sphere.scale.setScalar(pulse);
+  wire.scale.setScalar(pulse * 1.01);
 
-  // Rings rotation
-  ring1.rotation.z += 0.004;
-  ring2.rotation.z -= 0.003;
-  ring3.rotation.x += 0.005;
+  // Ring spin
+  ring1.rotation.z += 0.005;
+  ring2.rotation.z -= 0.004;
+  ring3.rotation.x += 0.006;
 
-  // Satellites orbit
-  satGroup.rotation.y += 0.008;
-  satGroup.rotation.x += 0.003;
+  // Gems orbit
+  gemGroup.rotation.y += 0.009;
+  gemGroup.rotation.x += 0.003;
 
-  // Light animation
-  goldLight1.position.x = Math.sin(t * 0.7) * 5;
-  goldLight1.position.y = Math.cos(t * 0.5) * 5;
-  goldLight2.position.x = Math.cos(t * 0.6) * 5;
-  goldLight2.position.z = Math.sin(t * 0.8) * 4;
+  // Moving lights
+  goldFill.position.x = Math.sin(t * 0.6) * 5;
+  goldFill.position.y = Math.cos(t * 0.4) * 4;
+  rimLight.position.x = Math.cos(t * 0.7) * 5;
 
   controls.update();
   renderer.render(scene, camera);
