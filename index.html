@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Golden Angles 🌟 — 3D Demo</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #0a0a0f; overflow: hidden; font-family: 'Segoe UI', sans-serif; }
+    canvas { display: block; }
+    #overlay {
+      position: fixed; top: 30px; left: 50%; transform: translateX(-50%);
+      text-align: center; pointer-events: none; z-index: 10;
+    }
+    #overlay h1 {
+      font-size: clamp(1.2rem, 4vw, 2rem);
+      background: linear-gradient(135deg, #FFD700, #FFA500, #FFD700);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 3px; font-weight: 800;
+      text-shadow: none;
+      filter: drop-shadow(0 0 20px rgba(255,215,0,0.5));
+    }
+    #overlay p {
+      color: rgba(255,215,0,0.6); font-size: 0.85rem; margin-top: 6px;
+      letter-spacing: 2px;
+    }
+    #hint {
+      position: fixed; bottom: 25px; left: 50%; transform: translateX(-50%);
+      color: rgba(255,215,0,0.35); font-size: 0.75rem; letter-spacing: 1px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+<div id="overlay">
+  <h1>GOLDEN ANGLES ✦</h1>
+  <p>الزوايا الذهبية • سلطنة عُمان</p>
+</div>
+<div id="hint">اسحب للتدوير • scroll للتكبير</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "./three.module.js",
+    "three/addons/controls/OrbitControls.js": "./OrbitControls.js",
+    "three/addons/environments/RoomEnvironment.js": "./RoomEnvironment.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// Scene
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x0a0a0f, 0.035);
+
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 100);
+camera.position.set(0, 0, 5);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(devicePixelRatio);
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.body.appendChild(renderer.domElement);
+
+// Controls
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+controls.dampingFactor = 0.05;
+controls.autoRotate = true;
+controls.autoRotateSpeed = 1.5;
+
+// Lights
+const ambientLight = new THREE.AmbientLight(0xFFDD88, 3);
+scene.add(ambientLight);
+
+const goldLight1 = new THREE.PointLight(0xFFD700, 200, 30);
+goldLight1.position.set(4, 4, 4);
+scene.add(goldLight1);
+
+const goldLight2 = new THREE.PointLight(0xFF8C00, 150, 30);
+goldLight2.position.set(-4, -2, 3);
+scene.add(goldLight2);
+
+const blueLight = new THREE.PointLight(0x88AAFF, 80, 20);
+blueLight.position.set(0, -4, -3);
+scene.add(blueLight);
+
+const topLight = new THREE.DirectionalLight(0xFFFFFF, 2);
+topLight.position.set(0, 5, 5);
+scene.add(topLight);
+
+// === Main Golden Sphere (Icosahedron) ===
+const mainGeo = new THREE.IcosahedronGeometry(1.4, 4);
+const mainMat = new THREE.MeshStandardMaterial({
+  color: 0xFFD700,
+  metalness: 1.0,
+  roughness: 0.15,
+  envMapIntensity: 1.5,
+});
+const mainMesh = new THREE.Mesh(mainGeo, mainMat);
+scene.add(mainMesh);
+
+// === Wireframe Overlay ===
+const wireMat = new THREE.MeshBasicMaterial({
+  color: 0xFFAA00,
+  wireframe: true,
+  transparent: true,
+  opacity: 0.12,
+});
+const wireMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(1.42, 2), wireMat);
+scene.add(wireMesh);
+
+// === Outer Ring ===
+const ringGeo = new THREE.TorusGeometry(2.2, 0.03, 16, 120);
+const ringMat = new THREE.MeshStandardMaterial({
+  color: 0xFFD700, metalness: 1, roughness: 0.1,
+  emissive: 0xFFAA00, emissiveIntensity: 0.3,
+});
+const ring1 = new THREE.Mesh(ringGeo, ringMat);
+ring1.rotation.x = Math.PI / 2;
+scene.add(ring1);
+
+const ring2 = new THREE.Mesh(ringGeo, ringMat.clone());
+ring2.rotation.x = Math.PI / 3;
+ring2.rotation.y = Math.PI / 4;
+scene.add(ring2);
+
+const ring3 = new THREE.Mesh(ringGeo, ringMat.clone());
+ring3.rotation.y = Math.PI / 2;
+scene.add(ring3);
+
+// === Orbiting Satellites ===
+const satGroup = new THREE.Group();
+scene.add(satGroup);
+
+const satPositions = [
+  [2.5, 0, 0], [-2.5, 0, 0],
+  [0, 2.5, 0], [0, -2.5, 0],
+  [0, 0, 2.5], [0, 0, -2.5],
+];
+
+satPositions.forEach((pos, i) => {
+  const geo = new THREE.OctahedronGeometry(0.18 + (i % 3) * 0.05);
+  const mat = new THREE.MeshStandardMaterial({
+    color: i % 2 === 0 ? 0xFFD700 : 0xFFA500,
+    metalness: 1, roughness: 0.1,
+    emissive: 0xFF8800, emissiveIntensity: 0.2,
+  });
+  const sat = new THREE.Mesh(geo, mat);
+  sat.position.set(...pos);
+  satGroup.add(sat);
+});
+
+// === Particle Stars ===
+const starCount = 400;
+const starGeo = new THREE.BufferGeometry();
+const starPos = new Float32Array(starCount * 3);
+for (let i = 0; i < starCount * 3; i++) {
+  starPos[i] = (Math.random() - 0.5) * 40;
+}
+starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+const starMat = new THREE.PointsMaterial({
+  color: 0xFFD700, size: 0.05, transparent: true, opacity: 0.6,
+});
+scene.add(new THREE.Points(starGeo, starMat));
+
+// === Environment Map (simple gradient) ===
+const pmremGenerator = new THREE.PMREMGenerator(renderer);
+scene.environment = pmremGenerator.fromScene(
+  new THREE.RoomEnvironment(), 0.04
+).texture;
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// Animate
+let t = 0;
+function animate() {
+  requestAnimationFrame(animate);
+  t += 0.01;
+
+  // Pulsating scale
+  const pulse = 1 + 0.03 * Math.sin(t * 2);
+  mainMesh.scale.setScalar(pulse);
+  wireMesh.scale.setScalar(pulse * 1.01);
+
+  // Rings rotation
+  ring1.rotation.z += 0.004;
+  ring2.rotation.z -= 0.003;
+  ring3.rotation.x += 0.005;
+
+  // Satellites orbit
+  satGroup.rotation.y += 0.008;
+  satGroup.rotation.x += 0.003;
+
+  // Light animation
+  goldLight1.position.x = Math.sin(t * 0.7) * 5;
+  goldLight1.position.y = Math.cos(t * 0.5) * 5;
+  goldLight2.position.x = Math.cos(t * 0.6) * 5;
+  goldLight2.position.z = Math.sin(t * 0.8) * 4;
+
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
